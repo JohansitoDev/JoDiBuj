@@ -1,0 +1,64 @@
+<resources>
+    <string name="app_name">JoDiBuj</string>
+    <string name="splash_tagline">Dibuja con amigos, vota y sube de nivel</string>
+
+    <!-- Auth -->
+    <string name="auth_title_login">¡Bienvenido a JoDiBuj!</string>
+    <string name="auth_title_register">Crea tu cuenta de artista</string>
+    <string name="auth_subtitle">Juega en salas de hasta 6 amigos y escala el ranking global</string>
+    <string name="auth_tab_login">Iniciar sesión</string>
+    <string name="auth_tab_register">Crear cuenta</string>
+    <string name="input_username_label">Nombre de usuario (Apodo)</string>
+    <string name="input_username_placeholder">Ej: Picasso99</string>
+    <string name="input_login_nick_label">Apodo de jugador (opcional)</string>
+    <string name="input_login_nick_placeholder">Ej: ArtistaPro</string>
+    <string name="input_email_label">Correo electrónico</string>
+    <string name="input_email_placeholder">tu@correo.com</string>
+    <string name="input_display_name_label">Nombre para mostrar</string>
+    <string name="input_bio_label">Frase artística (opcional)</string>
+    <string name="input_bio_placeholder">Amo dibujar peces y gatos</string>
+    <string name="choose_avatar_label">Elige tu avatar</string>
+    <string name="btn_sign_in_google">Iniciar sesión con Google</string>
+    <string name="btn_create_account_google">Crear cuenta con Google</string>
+    <string name="btn_enter_guest">Entrar como invitado</string>
+    <string name="btn_connect_google">Conectar con Google</string>
+    <string name="auth_google_note">Acceso seguro con tu cuenta de Google o prueba sin cuenta en modo invitado</string>
+    <string name="guest_multiplayer_notice">En modo invitado puedes practicar todos los niveles. Conecta tu cuenta de Google para crear salas con 6 amigos.</string>
+    <string name="guest_leaderboard_notice">Conecta tu cuenta de Google para competir y aparecer en la tabla de clasificación global.</string>
+
+    <!-- Home & Multiplayer -->
+    <string name="nav_play">Jugar</string>
+    <string name="nav_leaderboard">Ranking</string>
+    <string name="nav_profile">Perfil</string>
+    <string name="level_progress_title">Progreso Nivel %1$d</string>
+    <string name="multiplayer_card_title">Sala Multijugador</string>
+    <string name="multiplayer_card_subtitle">Hasta 6 amigos dibujando y votando en vivo</string>
+    <string name="btn_create_room">Crear sala nueva</string>
+    <string name="input_room_code_label">Código de sala</string>
+    <string name="btn_join_room">Unirse</string>
+    <string name="open_rooms_title">Salas abiertas ahora</string>
+    <string name="btn_enter_room">Entrar</string>
+    <string name="levels_path_title">Camino de Niveles</string>
+    <string name="levels_path_subtitle">Practica cada dibujo para ganar XP y desbloquear retos</string>
+
+    <!-- Room -->
+    <string name="room_code_label">Comparte este código con hasta 5 amigos</string>
+    <string name="btn_invite_friend">Invitar amigo</string>
+    <string name="btn_start_game">¡Empezar partida!</string>
+
+    <!-- Leaderboard -->
+    <string name="leaderboard_title">Tabla Global</string>
+    <string name="leaderboard_subtitle">Los mejores dibujantes de JoDiBuj</string>
+
+    <!-- Profile & Notifications -->
+    <string name="profile_edit_title">Tu cuenta</string>
+    <string name="btn_save_profile">Guardar cambios</string>
+    <string name="notifications_title">Recordatorio diario</string>
+    <string name="notifications_subtitle">Recibe una notificación diaria para dibujar y mantener tu racha</string>
+    <string name="btn_test_notification">Probar notificación ahora</string>
+    <string name="btn_sign_out">Cerrar sesión</string>
+    <string name="notification_channel_name">Recordatorios diarios de JoDiBuj</string>
+    <string name="notification_channel_desc">Notificaciones diarias para jugar con amigos y subir de nivel</string>
+    <string name="notification_daily_title">¡Hora de dibujar en JoDiBuj!</string>
+    <string name="notification_daily_body">Crea una sala con tus amigos, vota por el mejor dibujo y sube de nivel hoy.</string>
+</resources>

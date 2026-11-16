@@ -1,0 +1,272 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 3 && data.username.size() <= 24 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 120)) &&
+             data.avatarIcon is string && data.avatarIcon.size() >= 1 && data.avatarIcon.size() <= 24 &&
+             data.avatarColor is string && data.avatarColor.size() >= 4 && data.avatarColor.size() <= 9 &&
+             data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 10000000 &&
+             data.level is int && data.level >= 1 && data.level <= 1000 &&
+             data.gamesPlayed is int && data.gamesPlayed >= 0 && data.gamesPlayed <= 1000000 &&
+             data.wins is int && data.wins >= 0 && data.wins <= 1000000 &&
+             data.currentStreak is int && data.currentStreak >= 0 && data.currentStreak <= 100000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLeaderboardEntry(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId.size() <= 128 &&
+             data.username is string && data.username.size() >= 3 && data.username.size() <= 24 &&
+             data.avatarIcon is string && data.avatarIcon.size() >= 1 && data.avatarIcon.size() <= 24 &&
+             data.avatarColor is string && data.avatarColor.size() >= 4 && data.avatarColor.size() <= 9 &&
+             data.totalPoints is int && data.totalPoints >= 0 && data.totalPoints <= 10000000 &&
+             data.level is int && data.level >= 1 && data.level <= 1000 &&
+             data.wins is int && data.wins >= 0 && data.wins <= 1000000 &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidRoom(data, roomId) {
+      return data.roomCode is string && data.roomCode == roomId && data.roomCode.size() >= 4 && data.roomCode.size() <= 12 &&
+             data.hostId is string && data.hostId.size() >= 1 && data.hostId.size() <= 128 &&
+             data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 30 &&
+             data.status in ['waiting', 'drawing', 'voting', 'results', 'finished'] &&
+             data.promptWord is string && data.promptWord.size() >= 1 && data.promptWord.size() <= 30 &&
+             data.promptKey is string && data.promptKey.size() >= 1 && data.promptKey.size() <= 30 &&
+             data.currentRound is int && data.currentRound >= 1 && data.currentRound <= 10 &&
+             data.totalRounds is int && data.totalRounds >= 1 && data.totalRounds <= 10 &&
+             data.maxPlayers is int && data.maxPlayers >= 2 && data.maxPlayers <= 6 &&
+             data.roundDurationSec is int && data.roundDurationSec >= 30 && data.roundDurationSec <= 120 &&
+             data.playerUids is list && data.playerUids.size() >= 1 && data.playerUids.size() <= 6 && data.playerUids[0] is string &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidRoomPlayer(data, roomId, playerId) {
+      return data.userId is string && data.userId == playerId && data.userId.size() <= 128 &&
+             data.roomId is string && data.roomId == roomId && data.roomId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 30 &&
+             data.avatarIcon is string && data.avatarIcon.size() >= 1 && data.avatarIcon.size() <= 24 &&
+             data.avatarColor is string && data.avatarColor.size() >= 4 && data.avatarColor.size() <= 9 &&
+             data.hasSubmittedRound is int && data.hasSubmittedRound >= 0 && data.hasSubmittedRound <= 10 &&
+             isValidTimestamp(data.joinedAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDrawing(data, roomId) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.roomId is string && data.roomId == roomId && data.roomId.size() <= 128 &&
+             data.username is string && data.username.size() >= 1 && data.username.size() <= 30 &&
+             data.avatarColor is string && data.avatarColor.size() >= 4 && data.avatarColor.size() <= 9 &&
+             data.round is int && data.round >= 1 && data.round <= 10 &&
+             data.promptWord is string && data.promptWord.size() >= 1 && data.promptWord.size() <= 30 &&
+             data.strokes is list && data.strokes.size() <= 150 && (data.strokes.size() == 0 || data.strokes[0] is map) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidVote(data, roomId) {
+      return data.voterId is string && data.voterId.size() >= 1 && data.voterId.size() <= 128 &&
+             data.targetUserId is string && data.targetUserId.size() >= 1 && data.targetUserId.size() <= 128 &&
+             data.targetUserId != data.voterId &&
+             data.roomId is string && data.roomId == roomId && data.roomId.size() <= 128 &&
+             data.round is int && data.round >= 1 && data.round <= 10 &&
+             data.points is int && data.points >= 10 && data.points <= 100 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // 1. Private User Profiles (Owner-only PII protection)
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'username', 'displayName', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'gamesPlayed', 'wins', 'currentStreak', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'username', 'displayName', 'email', 'bio', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'gamesPlayed', 'wins', 'currentStreak', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'email', 'bio', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'gamesPlayed', 'wins', 'currentStreak', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    // 2. Public Global Leaderboard (No PII)
+    match /leaderboard/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && resource.data.totalPoints >= 0;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'username', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'wins', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'username', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'wins', 'updatedAt']) &&
+                       isValidLeaderboardEntry(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidLeaderboardEntry(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['username', 'avatarIcon', 'avatarColor', 'totalPoints', 'level', 'wins', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+
+    // 3. Multiplayer Drawing Rooms (Up to 6 players)
+    match /rooms/{roomId} {
+      allow get: if isSignedIn() && isValidId(roomId);
+      allow list: if isSignedIn() && (request.auth.uid in resource.data.playerUids || resource.data.status == 'waiting');
+
+      allow create: if isSignedIn() &&
+                       isValidId(roomId) &&
+                       incoming().keys().hasAll(['roomCode', 'hostId', 'hostName', 'status', 'promptWord', 'promptKey', 'currentRound', 'totalRounds', 'maxPlayers', 'roundDurationSec', 'playerUids', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['roomCode', 'hostId', 'hostName', 'status', 'promptWord', 'promptKey', 'currentRound', 'totalRounds', 'maxPlayers', 'roundDurationSec', 'playerUids', 'createdAt', 'updatedAt']) &&
+                       isValidRoom(incoming(), roomId) &&
+                       incoming().hostId == request.auth.uid &&
+                       incoming().status == 'waiting' &&
+                       incoming().playerUids.size() == 1 &&
+                       incoming().playerUids[0] == request.auth.uid;
+
+      allow update: if isSignedIn() &&
+                       isValidId(roomId) &&
+                       isValidRoom(incoming(), roomId) &&
+                       incoming().roomCode == existing().roomCode &&
+                       incoming().hostId == existing().hostId &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().status != 'finished' &&
+                       (
+                         // Action: Join waiting room (up to maxPlayers)
+                         (existing().status == 'waiting' &&
+                          existing().playerUids.size() < existing().maxPlayers &&
+                          !(request.auth.uid in existing().playerUids) &&
+                          request.auth.uid in incoming().playerUids &&
+                          incoming().playerUids.size() == existing().playerUids.size() + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['playerUids', 'updatedAt'])) ||
+                         // Action: Host advances game state / round / prompt
+                         (request.auth.uid == existing().hostId &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'promptWord', 'promptKey', 'currentRound', 'updatedAt'])) ||
+                         // Action: Player leaves room
+                         (request.auth.uid in existing().playerUids &&
+                          !(request.auth.uid in incoming().playerUids) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['playerUids', 'updatedAt']))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(roomId) && existing().hostId == request.auth.uid;
+
+      // 3a. Room Players Subcollection
+      match /players/{playerId} {
+        allow get: if isSignedIn() && isValidId(roomId) && isValidId(playerId) &&
+                      request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+        allow list: if isSignedIn() && resource.data.roomId == roomId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(playerId) &&
+                         request.auth.uid == playerId &&
+                         incoming().keys().hasAll(['userId', 'roomId', 'username', 'avatarIcon', 'avatarColor', 'hasSubmittedRound', 'joinedAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'roomId', 'username', 'avatarIcon', 'avatarColor', 'hasSubmittedRound', 'joinedAt', 'updatedAt']) &&
+                         isValidRoomPlayer(incoming(), roomId, playerId) &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(playerId) &&
+                         request.auth.uid == playerId &&
+                         isValidRoomPlayer(incoming(), roomId, playerId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().roomId == existing().roomId &&
+                         incoming().joinedAt == existing().joinedAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['username', 'avatarIcon', 'avatarColor', 'hasSubmittedRound', 'updatedAt']) &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+
+        allow delete: if isSignedIn() && isValidId(roomId) && isValidId(playerId) && request.auth.uid == playerId;
+      }
+
+      // 3b. Room Drawings Subcollection
+      match /drawings/{drawingId} {
+        allow get: if isSignedIn() && isValidId(roomId) && isValidId(drawingId) &&
+                      request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+        allow list: if isSignedIn() && resource.data.roomId == roomId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(drawingId) &&
+                         incoming().keys().hasAll(['userId', 'roomId', 'username', 'avatarColor', 'round', 'promptWord', 'strokes', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'roomId', 'username', 'avatarColor', 'round', 'promptWord', 'strokes', 'createdAt', 'updatedAt']) &&
+                         isValidDrawing(incoming(), roomId) &&
+                         incoming().userId == request.auth.uid &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+
+        allow update: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(drawingId) &&
+                         isValidDrawing(incoming(), roomId) &&
+                         existing().userId == request.auth.uid &&
+                         incoming().userId == existing().userId &&
+                         incoming().roomId == existing().roomId &&
+                         incoming().round == existing().round &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['strokes', 'updatedAt']) &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+
+        allow delete: if false;
+      }
+
+      // 3c. Room Votes Subcollection (1 vote per voter per round, cannot self-vote)
+      match /votes/{voteId} {
+        allow get: if isSignedIn() && isValidId(roomId) && isValidId(voteId) &&
+                      request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+        allow list: if isSignedIn() && resource.data.roomId == roomId;
+
+        allow create: if isSignedIn() &&
+                         isValidId(roomId) &&
+                         isValidId(voteId) &&
+                         voteId == (string(incoming().round) + '_' + request.auth.uid) &&
+                         incoming().keys().hasAll(['voterId', 'targetUserId', 'roomId', 'round', 'points', 'createdAt']) &&
+                         incoming().keys().hasOnly(['voterId', 'targetUserId', 'roomId', 'round', 'points', 'createdAt']) &&
+                         isValidVote(incoming(), roomId) &&
+                         incoming().voterId == request.auth.uid &&
+                         request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.playerUids;
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

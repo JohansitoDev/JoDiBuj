@@ -1,0 +1,6 @@
+{
+  "name": "JoDiBuj",
+  "description": "Juego social de dibujo multijugador hasta 6 jugadores con niveles, votación en sala, recordatorios diarios y tabla de clasificación global.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

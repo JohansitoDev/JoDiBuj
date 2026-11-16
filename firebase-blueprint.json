@@ -1,0 +1,202 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private authenticated player profile, level progression, and drawing stats.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the user." },
+        "username": { "type": "string", "description": "Public nickname (3-24 chars)." },
+        "displayName": { "type": "string", "description": "Display name (1-40 chars)." },
+        "email": { "type": "string", "description": "Private user email (owner-only)." },
+        "bio": { "type": "string", "description": "Optional artist bio (0-120 chars)." },
+        "avatarIcon": { "type": "string", "description": "Avatar icon key." },
+        "avatarColor": { "type": "string", "description": "Hex color for player avatar." },
+        "totalPoints": { "type": "integer", "description": "Cumulative XP/points earned." },
+        "level": { "type": "integer", "description": "Current player level." },
+        "gamesPlayed": { "type": "integer", "description": "Total matches played." },
+        "wins": { "type": "integer", "description": "Total room victories." },
+        "currentStreak": { "type": "integer", "description": "Consecutive daily streak count." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when updated." }
+      },
+      "required": [
+        "userId",
+        "username",
+        "displayName",
+        "avatarIcon",
+        "avatarColor",
+        "totalPoints",
+        "level",
+        "gamesPlayed",
+        "wins",
+        "currentStreak",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public global leaderboard entry without PII.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the player." },
+        "username": { "type": "string", "description": "Player nickname." },
+        "avatarIcon": { "type": "string", "description": "Avatar icon key." },
+        "avatarColor": { "type": "string", "description": "Hex color for avatar." },
+        "totalPoints": { "type": "integer", "description": "Total points for global ranking." },
+        "level": { "type": "integer", "description": "Player level." },
+        "wins": { "type": "integer", "description": "Total wins." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when updated." }
+      },
+      "required": [
+        "userId",
+        "username",
+        "avatarIcon",
+        "avatarColor",
+        "totalPoints",
+        "level",
+        "wins",
+        "updatedAt"
+      ]
+    },
+    "GameRoom": {
+      "title": "GameRoom",
+      "description": "Multiplayer drawing room supporting up to 6 players.",
+      "type": "object",
+      "properties": {
+        "roomCode": { "type": "string", "description": "Room code matching document ID." },
+        "hostId": { "type": "string", "description": "UID of the room host." },
+        "hostName": { "type": "string", "description": "Username of the room host." },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "drawing", "voting", "results", "finished"],
+          "description": "Current room phase."
+        },
+        "promptWord": { "type": "string", "description": "Spanish prompt word to draw (e.g. Pez, Perro)." },
+        "promptKey": { "type": "string", "description": "Reference illustration key." },
+        "currentRound": { "type": "integer", "description": "Current round number (1..10)." },
+        "totalRounds": { "type": "integer", "description": "Total rounds in the match." },
+        "maxPlayers": { "type": "integer", "description": "Maximum players allowed (up to 6)." },
+        "roundDurationSec": { "type": "integer", "description": "Drawing round duration in seconds." },
+        "playerUids": { "type": "array", "description": "Bounded list of joined player UIDs (max 6)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp when created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp when updated." }
+      },
+      "required": [
+        "roomCode",
+        "hostId",
+        "hostName",
+        "status",
+        "promptWord",
+        "promptKey",
+        "currentRound",
+        "totalRounds",
+        "maxPlayers",
+        "roundDurationSec",
+        "playerUids",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoomPlayer": {
+      "title": "RoomPlayer",
+      "description": "Participant metadata inside a game room.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatarIcon": { "type": "string" },
+        "avatarColor": { "type": "string" },
+        "hasSubmittedRound": { "type": "integer" },
+        "joinedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "roomId",
+        "username",
+        "avatarIcon",
+        "avatarColor",
+        "hasSubmittedRound",
+        "joinedAt",
+        "updatedAt"
+      ]
+    },
+    "RoundDrawing": {
+      "title": "RoundDrawing",
+      "description": "Vector strokes drawn by a player for a specific round.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "username": { "type": "string" },
+        "avatarColor": { "type": "string" },
+        "round": { "type": "integer" },
+        "promptWord": { "type": "string" },
+        "strokes": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "roomId",
+        "username",
+        "avatarColor",
+        "round",
+        "promptWord",
+        "strokes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "RoundVote": {
+      "title": "RoundVote",
+      "description": "Immutable peer vote cast for another player's drawing in a round.",
+      "type": "object",
+      "properties": {
+        "voterId": { "type": "string" },
+        "targetUserId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "round": { "type": "integer" },
+        "points": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "voterId",
+        "targetUserId",
+        "roomId",
+        "round",
+        "points",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and progression stats."
+    },
+    "/leaderboard/{userId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Public global leaderboard sorted by totalPoints."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/GameRoom" },
+      "description": "Multiplayer drawing rooms (up to 6 players)."
+    },
+    "/rooms/{roomId}/players/{playerId}": {
+      "schema": { "$ref": "#/entities/RoomPlayer" },
+      "description": "Players joined in a room."
+    },
+    "/rooms/{roomId}/drawings/{drawingId}": {
+      "schema": { "$ref": "#/entities/RoundDrawing" },
+      "description": "Drawings submitted per round in a room."
+    },
+    "/rooms/{roomId}/votes/{voteId}": {
+      "schema": { "$ref": "#/entities/RoundVote" },
+      "description": "Peer votes cast per round in a room."
+    }
+  }
+}
