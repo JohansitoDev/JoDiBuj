@@ -1,22 +1,7 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# JoDiBuj
+### JoDiBuj es una aplicacion mobil para jugar entre amigos de dibujo
 
-# Run and deploy your AI Studio app
+<img width="300" src="https://github.com/user-attachments/assets/140de5d7-f363-4e37-aca1-9936742ef555" />  <img width="300"  src="https://github.com/user-attachments/assets/9b0fca28-54fe-42f7-b54d-890af76f677f" />
+<img width="300"  src="https://github.com/user-attachments/assets/fab460cc-129f-4796-ba40-0148fdb3c162" />  <img width="300" src="https://github.com/user-attachments/assets/6c25737e-58ee-424a-8575-92d65b1be26c" />
+<img width="300"  src="https://github.com/user-attachments/assets/8bf9463f-2e06-40b6-b759-61c6319eab78" />  <img width="300"  src="https://github.com/user-attachments/assets/ccdc4171-6c6f-42b9-a158-c8f245def75e" />
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/dafb50d1-e9a7-498b-8ad3-3b39e9cd4a17
-
-## Run Locally
-
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
-
-
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
-7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.
