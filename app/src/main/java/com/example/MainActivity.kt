@@ -361,8 +361,8 @@ private fun GuestJoDiBujApp(
                             isBusy = false,
                             isGuestMode = true,
                             onConnectGoogle = triggerGoogleUpgrade,
-                            onCreateRoom = { triggerGoogleUpgrade() },
-                            onJoinRoom = { triggerGoogleUpgrade() },
+                            onCreateRoom = { _, _, _, _ -> triggerGoogleUpgrade() },
+                            onJoinRoom = { _ -> triggerGoogleUpgrade() },
                             onSoloPracticeCompleted = { xp ->
                                 scope.launch {
                                     GuestStore.addGuestPoints(context, xp)
@@ -573,9 +573,15 @@ private fun AuthenticatedJoDiBujApp(
                             profileState = profileState,
                             waitingRoomsState = waitingRoomsState,
                             isBusy = isBusy,
-                            onCreateRoom = { prompt ->
+                            onCreateRoom = { prompt, totalRounds, maxPlayers, roundDurationSec ->
                                 if (profile != null) {
-                                    mainViewModel.createRoom(profile, prompt) { roomCode ->
+                                    mainViewModel.createRoom(
+                                        profile = profile,
+                                        prompt = prompt,
+                                        totalRounds = totalRounds,
+                                        maxPlayers = maxPlayers,
+                                        roundDurationSec = roundDurationSec,
+                                    ) { roomCode ->
                                         navController.navigate("room/$roomCode")
                                     }
                                 }

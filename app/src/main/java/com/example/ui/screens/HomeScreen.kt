@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,9 +22,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Undo
@@ -74,6 +77,7 @@ import com.example.data.DrawingCatalog
 import com.example.data.DrawingPrompt
 import com.example.data.GameRoom
 import com.example.data.LevelSystem
+import com.example.data.RoomSettingsStore
 import com.example.data.StrokeData
 import com.example.data.UserProfile
 import com.example.ui.components.DuoButton
@@ -92,7 +96,6 @@ import com.example.ui.theme.DeepNavy
 import com.example.ui.theme.FeatherGreen
 import com.example.ui.theme.FeatherGreenDark
 import com.example.ui.theme.FoxOrange
-import com.example.ui.theme.LogoPink
 import com.example.ui.theme.LogoPurple
 import com.example.ui.theme.LogoPurpleDark
 import com.example.ui.theme.MacawBlue
@@ -110,12 +113,13 @@ fun HomeScreen(
     isBusy: Boolean,
     isGuestMode: Boolean = false,
     onConnectGoogle: () -> Unit = {},
-    onCreateRoom: (DrawingPrompt) -> Unit,
+    onCreateRoom: (prompt: DrawingPrompt, totalRounds: Int, maxPlayers: Int, roundDurationSec: Int) -> Unit,
     onJoinRoom: (String) -> Unit,
     onSoloPracticeCompleted: (Int) -> Unit,
 ) {
     var roomCodeInput by remember { mutableStateOf("") }
     var soloPracticePrompt by remember { mutableStateOf<DrawingPrompt?>(null) }
+    var showCreateRoomDialog by remember { mutableStateOf(false) }
 
     val profile = (profileState as? UiState.Success)?.data
 
@@ -138,7 +142,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .widthIn(max = 600.dp)
                     .fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 110.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Header Stats Bar (Duolingo-inspired)
@@ -205,7 +209,7 @@ fun HomeScreen(
                     }
                 }
 
-                // Multiplayer Room Section (up to 6 players)
+                // Multiplayer Room Section (up to 10 players)
                 item {
                     Column(
                         modifier = Modifier
@@ -266,7 +270,7 @@ fun HomeScreen(
                             }
                         } else {
                             DuoButton(
-                                onClick = { onCreateRoom(DrawingCatalog.randomPrompt()) },
+                                onClick = { showCreateRoomDialog = true },
                                 containerColor = FeatherGreen,
                                 lipColor = FeatherGreenDark,
                                 isLoading = isBusy,
@@ -385,7 +389,7 @@ fun HomeScreen(
                     )
                 }
 
-                itemsIndexed(DrawingCatalog.gameLevels, key = { _, level -> "level_${level.levelNumber}" }) { lvlIdx, gameLvl ->
+                itemsIndexed(DrawingCatalog.gameLevels, key = { _, level -> "level_${level.levelNumber}" }) { _, gameLvl ->
                     val isUnlocked = LevelSystem.isLevelUnlocked(
                         levelNumber = gameLvl.levelNumber,
                         userLevel = currentLevel,
@@ -444,12 +448,11 @@ fun HomeScreen(
 
                         Spacer(Modifier.height(14.dp))
 
-                        // Prompt nodes for this level
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
-                            gameLvl.prompts.forEachIndexed { pIdx, prompt ->
+                            gameLvl.prompts.forEach { prompt ->
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     modifier = Modifier
@@ -519,6 +522,18 @@ fun HomeScreen(
         }
     }
 
+    // Create Room Dialog with guest count & room settings
+    if (showCreateRoomDialog) {
+        CreateRoomDialog(
+            isBusy = isBusy,
+            onDismiss = { showCreateRoomDialog = false },
+            onCreateRoomConfigured = { prompt, rounds, maxPlayers, durationSec ->
+                showCreateRoomDialog = false
+                onCreateRoom(prompt, rounds, maxPlayers, durationSec)
+            },
+        )
+    }
+
     // Solo Level Practice Dialog
     val activePrompt = soloPracticePrompt
     if (activePrompt != null) {
@@ -531,9 +546,233 @@ fun HomeScreen(
             },
             onCreateRoomWithPrompt = {
                 soloPracticePrompt = null
-                onCreateRoom(activePrompt)
+                showCreateRoomDialog = true
             },
         )
+    }
+}
+
+@Composable
+fun CreateRoomDialog(
+    isBusy: Boolean = false,
+    onDismiss: () -> Unit,
+    onCreateRoomConfigured: (
+        prompt: DrawingPrompt,
+        totalRounds: Int,
+        maxPlayers: Int,
+        roundDurationSec: Int,
+    ) -> Unit,
+) {
+    var selectedPrompt by remember { mutableStateOf(DrawingCatalog.randomPrompt()) }
+    var selectedMaxPlayers by remember { mutableStateOf(6) }
+    var selectedRounds by remember { mutableStateOf(3) }
+    var selectedDurationSec by remember { mutableStateOf(60) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(26.dp))
+                .background(PureWhite)
+                .border(2.dp, BorderGray, RoundedCornerShape(26.dp))
+                .padding(20.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "Crear Sala de Juego",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = DeepNavy,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Configura la sala e invita a tus amigos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.height(16.dp))
+
+                // Tema / Palabra a Dibujar
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(SoftSurface)
+                        .border(1.5.dp, BorderGray, RoundedCornerShape(18.dp))
+                        .padding(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text("Tema de Dibujo:", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+                            Text(selectedPrompt.wordEs, style = MaterialTheme.typography.titleLarge, color = DeepNavy, fontWeight = FontWeight.Bold)
+                        }
+                        PromptIllustrationBadge(promptKey = selectedPrompt.key, size = 48.dp)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    DuoOutlinedButton(
+                        onClick = {
+                            selectedPrompt = DrawingCatalog.randomPrompt(excludeKey = selectedPrompt.key)
+                        },
+                        height = 38.dp,
+                        accentColor = MacawBlue,
+                    ) {
+                        Text("🎲 Cambiar Tema Al Azar", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Cantidad de Invitados (Jugadores Máximos)
+                Text(
+                    text = "Cantidad de Invitados (Máx Jugadores):",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    listOf(2, 3, 4, 6, 8, 10).forEach { count ->
+                        val isSel = selectedMaxPlayers == count
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSel) MacawBlue else SoftSurface)
+                                .border(1.5.dp, if (isSel) MacawBlueDark else BorderGray, RoundedCornerShape(12.dp))
+                                .clickable { selectedMaxPlayers = count },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "$count",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isSel) PureWhite else TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Número de Rondas
+                Text(
+                    text = "Número de Rondas:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(1 to "1 R.", 2 to "2 R.", 3 to "3 R.", 5 to "5 R.").forEach { (rounds, label) ->
+                        val isSel = selectedRounds == rounds
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSel) FeatherGreen else SoftSurface)
+                                .border(1.5.dp, if (isSel) FeatherGreenDark else BorderGray, RoundedCornerShape(12.dp))
+                                .clickable { selectedRounds = rounds },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSel) PureWhite else TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Tiempo por Ronda
+                Text(
+                    text = "Tiempo por Ronda:",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    listOf(30 to "30s", 45 to "45s", 60 to "60s", 90 to "90s", 120 to "120s").forEach { (sec, label) ->
+                        val isSel = selectedDurationSec == sec
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSel) FoxOrange else SoftSurface)
+                                .border(1.5.dp, if (isSel) DeepNavy else BorderGray, RoundedCornerShape(12.dp))
+                                .clickable { selectedDurationSec = sec },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (isSel) PureWhite else TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    DuoOutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        height = 48.dp,
+                    ) {
+                        Text("Cancelar", style = MaterialTheme.typography.labelLarge)
+                    }
+                    DuoButton(
+                        onClick = {
+                            onCreateRoomConfigured(
+                                selectedPrompt,
+                                selectedRounds,
+                                selectedMaxPlayers,
+                                selectedDurationSec,
+                            )
+                        },
+                        containerColor = FeatherGreen,
+                        lipColor = FeatherGreenDark,
+                        isLoading = isBusy,
+                        modifier = Modifier.weight(1.3f),
+                        height = 48.dp,
+                    ) {
+                        Text("✨ Crear y Abrir", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -557,23 +796,25 @@ private fun SoloPracticeCanvasDialog(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f)
+                .clip(RoundedCornerShape(26.dp))
                 .background(PureWhite)
-                .padding(16.dp),
+                .border(2.dp, BorderGray, RoundedCornerShape(26.dp))
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Cerrar", tint = TextPrimary)
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column {
                     Text(
-                        text = "Reto: ${prompt.wordEs}",
+                        text = "Práctica Solo: ${prompt.wordEs}",
                         style = MaterialTheme.typography.titleLarge,
                         color = DeepNavy,
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = prompt.hintEs,
@@ -581,95 +822,98 @@ private fun SoloPracticeCanvasDialog(
                         color = TextSecondary,
                     )
                 }
-                PromptIllustrationBadge(promptKey = prompt.key, size = 56.dp)
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.DeleteOutline, contentDescription = "Cerrar", tint = TextSecondary)
+                }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Drawing Canvas
+            // Canvas drawing area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(PureWhite)
-                    .border(2.dp, BorderGray, RoundedCornerShape(22.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(SoftSurface)
+                    .border(1.5.dp, BorderGray, RoundedCornerShape(20.dp))
                     .onSizeChanged { canvasSize = it }
-                    .pointerInput(selectedColorHex) {
+                    .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { offset ->
-                                val nx = (offset.x / canvasSize.width.coerceAtLeast(1)).toDouble().coerceIn(0.0, 1.0)
-                                val ny = (offset.y / canvasSize.height.coerceAtLeast(1)).toDouble().coerceIn(0.0, 1.0)
-                                activeStrokePoints = listOf(nx, ny)
+                                activeStrokePoints = listOf(offset.x.toDouble(), offset.y.toDouble())
                             },
                             onDrag = { change, _ ->
-                                change.consume()
-                                val nx = (change.position.x / canvasSize.width.coerceAtLeast(1)).toDouble().coerceIn(0.0, 1.0)
-                                val ny = (change.position.y / canvasSize.height.coerceAtLeast(1)).toDouble().coerceIn(0.0, 1.0)
-                                activeStrokePoints = activeStrokePoints + listOf(nx, ny)
+                                val pos = change.position
+                                activeStrokePoints = activeStrokePoints + listOf(pos.x.toDouble(), pos.y.toDouble())
                             },
                             onDragEnd = {
-                                if (activeStrokePoints.size >= 2) {
-                                    strokes.add(StrokeData(selectedColorHex, 10.0, activeStrokePoints))
+                                if (activeStrokePoints.size >= 4) {
+                                    strokes.add(StrokeData(selectedColorHex, 8.0, activeStrokePoints))
                                 }
                                 activeStrokePoints = emptyList()
                             },
-                            onDragCancel = { activeStrokePoints = emptyList() },
                         )
                     },
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    fun renderStroke(colorHex: String, width: Float, pts: List<Double>) {
-                        if (pts.size < 2) return
-                        val path = Path()
-                        path.moveTo((pts[0] * size.width).toFloat(), (pts[1] * size.height).toFloat())
-                        var i = 2
-                        while (i + 1 < pts.size) {
-                            path.lineTo((pts[i] * size.width).toFloat(), (pts[i + 1] * size.height).toFloat())
-                            i += 2
+                    strokes.forEach { stroke ->
+                        if (stroke.points.size >= 4) {
+                            val path = Path().apply {
+                                moveTo(stroke.points[0].toFloat(), stroke.points[1].toFloat())
+                                for (i in 2 until stroke.points.size step 2) {
+                                    lineTo(stroke.points[i].toFloat(), stroke.points[i + 1].toFloat())
+                                }
+                            }
+                            drawPath(
+                                path = path,
+                                color = parseColorSafe(stroke.colorHex),
+                                style = Stroke(
+                                    width = stroke.strokeWidth.toFloat(),
+                                    cap = StrokeCap.Round,
+                                    join = StrokeJoin.Round,
+                                ),
+                            )
+                        }
+                    }
+                    if (activeStrokePoints.size >= 4) {
+                        val activePath = Path().apply {
+                            moveTo(activeStrokePoints[0].toFloat(), activeStrokePoints[1].toFloat())
+                            for (i in 2 until activeStrokePoints.size step 2) {
+                                lineTo(activeStrokePoints[i].toFloat(), activeStrokePoints[i + 1].toFloat())
+                            }
                         }
                         drawPath(
-                            path = path,
-                            color = parseColorSafe(colorHex),
-                            style = Stroke(width = width, cap = StrokeCap.Round, join = StrokeJoin.Round),
+                            path = activePath,
+                            color = parseColorSafe(selectedColorHex),
+                            style = Stroke(
+                                width = 8f,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round,
+                            ),
                         )
-                    }
-                    strokes.forEach { s -> renderStroke(s.colorHex, s.strokeWidth.toFloat(), s.points) }
-                    if (activeStrokePoints.size >= 2) {
-                        renderStroke(selectedColorHex, 10f, activeStrokePoints)
                     }
                 }
             }
 
             Spacer(Modifier.height(12.dp))
 
-            // Color Palette & Tools
+            // Palette selector
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    palette.forEach { hex ->
-                        val color = parseColorSafe(hex)
-                        val isSel = selectedColorHex == hex
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(color)
-                                .border(if (isSel) 3.dp else 1.dp, if (isSel) DeepNavy else BorderGray, CircleShape)
-                                .clickable { selectedColorHex = hex },
-                        )
-                    }
-                }
-                Row {
-                    IconButton(onClick = { if (strokes.isNotEmpty()) strokes.removeAt(strokes.lastIndex) }) {
-                        Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = "Deshacer", tint = TextPrimary)
-                    }
-                    IconButton(onClick = { strokes.clear() }) {
-                        Icon(Icons.Rounded.DeleteOutline, contentDescription = "Limpiar", tint = CardinalRed)
-                    }
+                palette.forEach { hex ->
+                    val color = parseColorSafe(hex)
+                    val isSel = selectedColorHex == hex
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .border(if (isSel) 3.dp else 1.dp, if (isSel) DeepNavy else PureWhite, CircleShape)
+                            .clickable { selectedColorHex = hex },
+                    )
                 }
             }
 
@@ -677,25 +921,25 @@ private fun SoloPracticeCanvasDialog(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 DuoOutlinedButton(
-                    onClick = onCreateRoomWithPrompt,
-                    accentColor = MacawBlue,
+                    onClick = { if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1) },
                     modifier = Modifier.weight(1f),
+                    height = 46.dp,
                 ) {
-                    Text("Jugar en sala", style = MaterialTheme.typography.labelLarge)
+                    Icon(Icons.AutoMirrored.Rounded.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Deshacer", style = MaterialTheme.typography.labelMedium)
                 }
                 DuoButton(
                     onClick = onCompleteChallenge,
-                    enabled = strokes.isNotEmpty(),
                     containerColor = FeatherGreen,
                     lipColor = FeatherGreenDark,
                     modifier = Modifier.weight(1.2f),
+                    height = 46.dp,
                 ) {
-                    Icon(Icons.Rounded.Check, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Completar (+${prompt.xpReward} XP)", style = MaterialTheme.typography.labelLarge)
+                    Text("¡Terminar (+${prompt.xpReward} XP)", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

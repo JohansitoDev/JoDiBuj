@@ -153,11 +153,19 @@ class MainViewModel(
         profile: UserProfile,
         prompt: DrawingPrompt = DrawingCatalog.randomPrompt(),
         totalRounds: Int = 3,
+        maxPlayers: Int = 6,
+        roundDurationSec: Int = 60,
         onRoomCreated: (String) -> Unit,
     ) {
         viewModelScope.launch {
             _isBusy.value = true
-            val result = repository.createRoom(profile, prompt, totalRounds)
+            val result = repository.createRoom(
+                profile = profile,
+                prompt = prompt,
+                totalRounds = totalRounds,
+                maxPlayers = maxPlayers,
+                roundDurationSec = roundDurationSec,
+            )
             _isBusy.value = false
             result.fold(
                 onSuccess = { code -> onRoomCreated(code) },

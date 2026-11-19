@@ -402,6 +402,8 @@ class JoDiBujRepository(
         profile: UserProfile,
         prompt: DrawingPrompt = DrawingCatalog.randomPrompt(),
         totalRounds: Int = 3,
+        maxPlayers: Int = 6,
+        roundDurationSec: Int = 60,
         explicitRoomCode: String? = null,
     ): Result<String> = runCatching {
         val uid = requireUserId()
@@ -418,8 +420,8 @@ class JoDiBujRepository(
             "promptKey" to prompt.key,
             "currentRound" to 1,
             "totalRounds" to totalRounds.coerceIn(1, 10),
-            "maxPlayers" to 6,
-            "roundDurationSec" to 60,
+            "maxPlayers" to maxPlayers.coerceIn(2, 20),
+            "roundDurationSec" to roundDurationSec.coerceIn(15, 300),
             "playerUids" to listOf(uid),
             "createdAt" to FieldValue.serverTimestamp(),
             "updatedAt" to FieldValue.serverTimestamp(),
