@@ -413,7 +413,7 @@ class JoDiBujRepository(
         explicitRoomCode: String? = null,
     ): Result<String> = runCatching {
         val uid = requireUserId()
-        val roomCode = (explicitRoomCode ?: generateRoomCode()).uppercase()
+        val roomCode = (explicitRoomCode ?: generateRoomCode(profile.username)).uppercase()
         val roomRef = db.collection("rooms").document(roomCode)
         val playerRef = roomRef.collection("players").document(uid)
 
@@ -709,8 +709,97 @@ class JoDiBujRepository(
             .firstOrNull()
     }
 
-    private fun generateRoomCode(): String {
-        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        return (1..6).map { chars[Random.nextInt(chars.length)] }.joinToString("")
+    private fun generateRoomCode(username: String): String {
+        val cleanPrefix = username.replace(Regex("[^A-Za-z0-9]"), "").uppercase().take(5).ifBlank { "ROOM" }
+        val num = (10..99).random()
+        return "$cleanPrefix-$num"
+    }
+
+    suspend fun requestJoinRoom(roomCodeInput: String, profile: UserProfile): Result<String> = runCatching {
+        val uid = requireUserId()
+        val roomCode = roomCodeInput.trim().uppercase()
+        val roomRef = db.collection("rooms").document(roomCode)
+        val snap = roomRef.get().await()
+        if (!snap.exists()) {
+            throw IllegalStateException("No existe ninguna sala con el código $roomCode.")
+        }
+        val room = snap.toObject(GameRoom::class.java) ?: throw IllegalStateException("Sala inválida.")
+        if (room.status != "waiting") {
+            throw IllegalStateException("La partida ya comenzó en esta sala.")
+        }
+        if (room.playerUids.contains(uid)) {
+            return@runCatching roomCode
+        }
+
+        val requestRef = roomRef.collection("requests").document(uid)
+        val requestPayload = mapOf(
+            "userId" to uid,
+            "username" to profile.username.take(30),
+            "avatarIcon" to profile.avatarIcon,
+            "avatarColor" to profile.avatarColor,
+            "status" to "pending",
+            "createdAt" to FieldValue.serverTimestamp(),
+        )
+        requestRef.set(requestPayload).await()
+        roomCode
+    }
+
+    fun observeRoomRequests(roomCode: String): Flow<List<RoomRequest>> {
+        val path = "rooms/${roomCode.uppercase()}/requests"
+        return db.collection(path)
+            .whereEqualTo("status", "pending")
+            .snapshots()
+            .map { snapshot ->
+                snapshot.documents.mapNotNull { it.toObject(RoomRequest::class.java) }
+            }
+            .catch { emit(emptyList()) }
+    }
+
+    suspend fun respondToJoinRequest(roomCode: String, userId: String, accept: Boolean): Result<Unit> = runCatching {
+        val roomRef = db.collection("rooms").document(roomCode.uppercase())
+        val requestRef = roomRef.collection("requests").document(userId)
+
+        if (accept) {
+            val reqSnap = requestRef.get().await()
+            val req = reqSnap.toObject(RoomRequest::class.java) ?: throw IllegalStateException("Solicitud no encontrada.")
+            val roomSnap = roomRef.get().await()
+            val room = roomSnap.toObject(GameRoom::class.java) ?: throw IllegalStateException("Sala no encontrada.")
+
+            if (!room.playerUids.contains(userId)) {
+                val updatedUids = room.playerUids + userId
+                roomRef.update(
+                    mapOf(
+                        "playerUids" to updatedUids,
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                    )
+                ).await()
+
+                val playerRef = roomRef.collection("players").document(userId)
+                val playerPayload = mapOf(
+                    "userId" to userId,
+                    "roomId" to roomCode,
+                    "username" to req.username,
+                    "avatarIcon" to req.avatarIcon,
+                    "avatarColor" to req.avatarColor,
+                    "hasSubmittedRound" to 0,
+                    "joinedAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                )
+                playerRef.set(playerPayload).await()
+            }
+            requestRef.update("status", "accepted").await()
+        } else {
+            requestRef.update("status", "rejected").await()
+        }
+    }
+
+    fun observeMyJoinRequest(roomCode: String, userId: String): Flow<RoomRequest?> {
+        val roomCodeClean = roomCode.uppercase()
+        return db.collection("rooms").document(roomCodeClean).collection("requests").document(userId)
+            .snapshots()
+            .map { snap ->
+                if (snap.exists()) snap.toObject(RoomRequest::class.java) else null
+            }
+            .catch { emit(null) }
     }
 }

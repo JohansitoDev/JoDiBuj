@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -72,6 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.data.GameRoom
 import com.example.data.RoomPlayer
+import com.example.data.RoomRequest
 import com.example.data.RoundDrawing
 import com.example.data.RoundVote
 import com.example.data.StrokeData
@@ -209,9 +211,11 @@ fun RoomScreen(
                         "waiting" -> WaitingLobbyContent(
                             room = room,
                             players = state.players,
+                            pendingRequests = state.pendingRequests,
                             isHost = isHost,
                             isBusy = isBusy,
                             onStartGame = { viewModel.startDrawingPhase(room) },
+                            onRespondRequest = { userId, accept -> viewModel.respondToJoinRequest(userId, accept) },
                             onShowMessage = onShowMessage,
                         )
                         "drawing" -> DrawingPhaseContent(
@@ -259,9 +263,11 @@ fun RoomScreen(
 private fun WaitingLobbyContent(
     room: GameRoom,
     players: List<RoomPlayer>,
+    pendingRequests: List<RoomRequest>,
     isHost: Boolean,
     isBusy: Boolean,
     onStartGame: () -> Unit,
+    onRespondRequest: (userId: String, accept: Boolean) -> Unit,
     onShowMessage: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -272,6 +278,63 @@ private fun WaitingLobbyContent(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        if (isHost && pendingRequests.isNotEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(BeeYellow.copy(alpha = 0.15f))
+                        .border(2.dp, BeeYellow, RoundedCornerShape(20.dp))
+                        .padding(16.dp),
+                ) {
+                    Text(
+                        text = "🔔 Solicitudes de entrada pendientes",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = DeepNavy,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    pendingRequests.forEach { req ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(PureWhite)
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                PlayerAvatar(iconKey = req.avatarIcon, colorHex = req.avatarColor, size = 38.dp)
+                                Spacer(Modifier.width(10.dp))
+                                Text(req.username, style = MaterialTheme.typography.titleMedium, color = TextPrimary)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                DuoOutlinedButton(
+                                    onClick = { onRespondRequest(req.userId, false) },
+                                    accentColor = CardinalRed,
+                                    height = 36.dp,
+                                    modifier = Modifier.width(88.dp),
+                                ) {
+                                    Text("Rechazar")
+                                }
+                                DuoButton(
+                                    onClick = { onRespondRequest(req.userId, true) },
+                                    containerColor = FeatherGreen,
+                                    lipColor = FeatherGreenDark,
+                                    height = 36.dp,
+                                    modifier = Modifier.width(88.dp),
+                                ) {
+                                    Text("Aceptar")
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
+                }
+            }
+        }
         item {
             Column(
                 modifier = Modifier
@@ -304,38 +367,45 @@ private fun WaitingLobbyContent(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     DuoOutlinedButton(
                         onClick = {
-                            clipboard.setText(AnnotatedString("https://jodibuj.app/room/${room.roomCode} (Código: ${room.roomCode})"))
-                            onShowMessage("Enlace y código copiados")
+                            clipboard.setText(AnnotatedString(room.roomCode))
+                            onShowMessage("Código ${room.roomCode} copiado")
                         },
                         accentColor = MacawBlue,
                         modifier = Modifier.weight(1f),
-                        testTag = "copy_room_code_button",
+                        height = 46.dp,
                     ) {
-                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Copiar Enlace", style = MaterialTheme.typography.labelLarge)
+                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Copiar", style = MaterialTheme.typography.labelMedium)
                     }
                     DuoButton(
                         onClick = {
-                            val shareText = "¡Únete a mi sala de dibujo en JoDiBuj! 🎨\nCódigo de sala: ${room.roomCode}\nEnlace directo: https://jodibuj.app/room/${room.roomCode}\n¡Entra y dibuja con nosotros!"
-                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                type = "text/plain"
+                            val shareText = "¡Únete a mi sala de dibujo en JoDiBuj! 🎨\nIntroduce este código de sala: *${room.roomCode}*\n¡Entra a la app y dibuja conmigo!"
+                            val whatsappIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(shareText)}")
                             }
-                            context.startActivity(Intent.createChooser(sendIntent, "Invitar amigo a JoDiBuj"))
+                            try {
+                                context.startActivity(whatsappIntent)
+                            } catch (_: Exception) {
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                    type = "text/plain"
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Invitar amigo"))
+                            }
                         },
-                        containerColor = MacawBlue,
-                        lipColor = MacawBlueDark,
-                        modifier = Modifier.weight(1.3f),
-                        testTag = "invite_friend_button",
+                        containerColor = FeatherGreen,
+                        lipColor = FeatherGreenDark,
+                        modifier = Modifier.weight(1.2f),
+                        height = 46.dp,
                     ) {
-                        Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.btn_invite_friend), style = MaterialTheme.typography.labelLarge)
+                        Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("💬 WhatsApp", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

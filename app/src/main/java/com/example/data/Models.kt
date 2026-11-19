@@ -84,6 +84,17 @@ data class RoomPlayer(
     @ServerTimestamp val updatedAt: Timestamp? = null,
 )
 
+@IgnoreExtraProperties
+data class RoomRequest(
+    @DocumentId val id: String = "",
+    val userId: String = "",
+    val username: String = "",
+    val avatarIcon: String = "brush",
+    val avatarColor: String = "#1CB0F6",
+    val status: String = "pending", // pending, accepted, rejected
+    @ServerTimestamp val createdAt: Timestamp? = null,
+)
+
 data class StrokeData(
     val colorHex: String = "#1CB0F6",
     val strokeWidth: Double = 8.0,

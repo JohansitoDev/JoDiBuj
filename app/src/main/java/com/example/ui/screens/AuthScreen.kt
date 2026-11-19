@@ -551,6 +551,13 @@ fun AuthScreen(
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "JoDiBuj · Versión 1.0 (Build 1)",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+            )
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

@@ -7,6 +7,7 @@ import com.example.data.DrawingCatalog
 import com.example.data.GameRoom
 import com.example.data.JoDiBujRepository
 import com.example.data.RoomPlayer
+import com.example.data.RoomRequest
 import com.example.data.RoundDrawing
 import com.example.data.RoundVote
 import com.example.data.StrokeData
@@ -27,6 +28,7 @@ data class RoomSnapshotState(
     val players: List<RoomPlayer> = emptyList(),
     val drawings: List<RoundDrawing> = emptyList(),
     val votes: List<RoundVote> = emptyList(),
+    val pendingRequests: List<RoomRequest> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
 ) {
@@ -54,12 +56,14 @@ class RoomViewModel(
         repository.observeRoomPlayers(roomCode),
         repository.observeRoomDrawings(roomCode),
         repository.observeRoomVotes(roomCode),
-    ) { room, players, drawings, votes ->
+        repository.observeRoomRequests(roomCode),
+    ) { room, players, drawings, votes, requests ->
         RoomSnapshotState(
             room = room,
             players = players,
             drawings = drawings,
             votes = votes,
+            pendingRequests = requests,
             isLoading = false,
             error = if (room == null) "La sala ya no está disponible." else null,
         )
@@ -244,6 +248,13 @@ class RoomViewModel(
                 .onSuccess { updated ->
                     _message.value = "¡+$myScore pts sumados a tu perfil! Nivel ${updated.level}"
                 }
+        }
+    }
+
+    fun respondToJoinRequest(userId: String, accept: Boolean) {
+        viewModelScope.launch {
+            repository.respondToJoinRequest(roomCode, userId, accept)
+                .onFailure { _message.value = it.message ?: "Error al procesar solicitud" }
         }
     }
 
