@@ -31,9 +31,15 @@ class JoDiBujRepository(
         auth = Firebase.auth,
     )
 
-    private fun requireUserId(): String {
-        return auth.currentUser?.uid
-            ?: throw IllegalStateException("Debes iniciar sesión con Google para continuar.")
+    private suspend fun requireUserId(): String {
+        val current = auth.currentUser
+        if (current != null) return current.uid
+        return try {
+            val result = auth.signInAnonymously().await()
+            result.user?.uid ?: "guest_${System.currentTimeMillis()}"
+        } catch (_: Exception) {
+            "guest_${System.currentTimeMillis()}"
+        }
     }
 
     fun observeUserProfile(userId: String): Flow<UserProfile?> = flow {

@@ -80,49 +80,7 @@ fun LeaderboardScreen(
             .testTag("leaderboard_screen"),
         contentAlignment = Alignment.TopCenter,
     ) {
-        if (isGuestMode) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 460.dp)
-                    .fillMaxSize()
-                    .padding(28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Icon(
-                    Icons.Rounded.EmojiEvents,
-                    contentDescription = null,
-                    tint = BeeYellow,
-                    modifier = Modifier.size(72.dp),
-                )
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    text = stringResource(R.string.leaderboard_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = DeepNavy,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.guest_leaderboard_notice),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(22.dp))
-                DuoButton(
-                    onClick = onConnectGoogle,
-                    containerColor = MacawBlue,
-                    lipColor = MacawBlueDark,
-                    testTag = "leaderboard_connect_google_button",
-                ) {
-                    Text(
-                        text = stringResource(R.string.btn_connect_google),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
-            }
-        } else when (leaderboardState) {
+        when (leaderboardState) {
             is UiState.Loading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MacawBlue)

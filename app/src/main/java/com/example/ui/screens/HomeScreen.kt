@@ -250,79 +250,59 @@ fun HomeScreen(
 
                         Spacer(Modifier.height(16.dp))
 
-                        if (isGuestMode) {
+                        DuoButton(
+                            onClick = { showCreateRoomDialog = true },
+                            containerColor = FeatherGreen,
+                            lipColor = FeatherGreenDark,
+                            isLoading = isBusy,
+                            testTag = "create_room_button",
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.guest_multiplayer_notice),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary,
+                                text = stringResource(R.string.btn_create_room),
+                                style = MaterialTheme.typography.labelLarge,
                             )
-                            Spacer(Modifier.height(14.dp))
+                        }
+
+                        Spacer(Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            DuoCleanInput(
+                                value = roomCodeInput,
+                                onValueChange = { roomCodeInput = it.uppercase().take(12) },
+                                label = stringResource(R.string.input_room_code_label),
+                                placeholder = "EJ: JD48K2",
+                                leadingIcon = Icons.Rounded.MeetingRoom,
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Characters,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                modifier = Modifier.weight(1.25f),
+                                testTag = "join_room_code_input",
+                            )
                             DuoButton(
-                                onClick = onConnectGoogle,
+                                onClick = {
+                                    if (roomCodeInput.trim().length >= 4) {
+                                        onJoinRoom(roomCodeInput.trim())
+                                    }
+                                },
                                 containerColor = MacawBlue,
                                 lipColor = MacawBlueDark,
-                                testTag = "home_guest_connect_google_button",
+                                enabled = roomCodeInput.trim().length >= 4 && !isBusy,
+                                modifier = Modifier
+                                    .weight(0.9f)
+                                    .padding(top = 4.dp),
+                                testTag = "join_room_button",
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_connect_google),
+                                    text = stringResource(R.string.btn_join_room),
                                     style = MaterialTheme.typography.labelLarge,
                                 )
-                            }
-                        } else {
-                            DuoButton(
-                                onClick = { showCreateRoomDialog = true },
-                                containerColor = FeatherGreen,
-                                lipColor = FeatherGreenDark,
-                                isLoading = isBusy,
-                                testTag = "create_room_button",
-                            ) {
-                                Icon(Icons.Rounded.Add, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = stringResource(R.string.btn_create_room),
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
-                            }
-
-                            Spacer(Modifier.height(14.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                DuoCleanInput(
-                                    value = roomCodeInput,
-                                    onValueChange = { roomCodeInput = it.uppercase().take(12) },
-                                    label = stringResource(R.string.input_room_code_label),
-                                    placeholder = "EJ: JD48K2",
-                                    leadingIcon = Icons.Rounded.MeetingRoom,
-                                    keyboardOptions = KeyboardOptions(
-                                        capitalization = KeyboardCapitalization.Characters,
-                                        imeAction = ImeAction.Done,
-                                    ),
-                                    modifier = Modifier.weight(1.25f),
-                                    testTag = "join_room_code_input",
-                                )
-                                DuoButton(
-                                    onClick = {
-                                        if (roomCodeInput.trim().length >= 4) {
-                                            onJoinRoom(roomCodeInput.trim())
-                                        }
-                                    },
-                                    containerColor = MacawBlue,
-                                    lipColor = MacawBlueDark,
-                                    enabled = roomCodeInput.trim().length >= 4 && !isBusy,
-                                    modifier = Modifier
-                                        .weight(0.9f)
-                                        .padding(top = 4.dp),
-                                    testTag = "join_room_button",
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.btn_join_room),
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
-                                }
                             }
                         }
                     }
