@@ -294,6 +294,12 @@ private fun WaitingLobbyContent(
                     color = DeepNavy,
                     fontWeight = FontWeight.Bold,
                 )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Enlace: https://jodibuj.app/room/${room.roomCode}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
                 Spacer(Modifier.height(14.dp))
 
                 Row(
@@ -302,8 +308,8 @@ private fun WaitingLobbyContent(
                 ) {
                     DuoOutlinedButton(
                         onClick = {
-                            clipboard.setText(AnnotatedString(room.roomCode))
-                            onShowMessage("Código ${room.roomCode} copiado")
+                            clipboard.setText(AnnotatedString("https://jodibuj.app/room/${room.roomCode} (Código: ${room.roomCode})"))
+                            onShowMessage("Enlace y código copiados")
                         },
                         accentColor = MacawBlue,
                         modifier = Modifier.weight(1f),
@@ -311,11 +317,11 @@ private fun WaitingLobbyContent(
                     ) {
                         Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Copiar", style = MaterialTheme.typography.labelLarge)
+                        Text("Copiar Enlace", style = MaterialTheme.typography.labelLarge)
                     }
                     DuoButton(
                         onClick = {
-                            val shareText = "¡Únete a mi sala de dibujo en JoDiBuj! 🎨\nCódigo de sala: ${room.roomCode}\nHasta 6 amigos pueden dibujar y votar por el ganador."
+                            val shareText = "¡Únete a mi sala de dibujo en JoDiBuj! 🎨\nCódigo de sala: ${room.roomCode}\nEnlace directo: https://jodibuj.app/room/${room.roomCode}\n¡Entra y dibuja con nosotros!"
                             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                                 type = "text/plain"
@@ -337,14 +343,14 @@ private fun WaitingLobbyContent(
 
         item {
             Text(
-                text = "Jugadores en la sala (${players.size}/6)",
+                text = "Jugadores en la sala (${players.size}/${room.maxPlayers})",
                 style = MaterialTheme.typography.titleLarge,
                 color = DeepNavy,
             )
         }
 
-        // 6 player slots
-        items((0 until 6).toList()) { slotIdx ->
+        // Dynamic player slots based on room.maxPlayers
+        items((0 until room.maxPlayers.toInt().coerceAtMost(20)).toList()) { slotIdx ->
             val player = players.getOrNull(slotIdx)
             if (player != null) {
                 Row(
